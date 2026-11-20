@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="470" viewBox="0 0 920 470">
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#1A73E8"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#188038"/>
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#5F6368"/>
+    </marker>
+    <style>
+      .bg { fill: #FFFFFF; }
+      .title { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 18px; font-weight: 700; fill: #202124; }
+      .subtitle { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 12px; fill: #5F6368; }
+      .box-title { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 14px; font-weight: 700; fill: #202124; }
+      .box-sub { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 11.5px; fill: #5F6368; }
+      .step-text { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 12px; font-weight: 600; fill: #202124; }
+      .step-sub { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 11px; fill: #5F6368; }
+      .badge-text { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 700; fill: #FFFFFF; }
+      .note-title { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 12.5px; font-weight: 700; fill: #174EA6; }
+      .note-body { font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 11.5px; fill: #3C4043; }
+    </style>
+  </defs>
+
+  <!-- Canvas -->
+  <rect class="bg" x="0" y="0" width="920" height="470" rx="14" stroke="#E8EAED" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <text x="32" y="38" class="title">Gemini Enterprise - Google Chat 연동 아키텍처</text>
+  <text x="32" y="58" class="subtitle">Cloud Run 비동기 처리로 30초 타임아웃을 우회하고, 사용자별 OAuth로 개인 Drive 권한을 유지합니다.</text>
+
+  <!-- Node 1: User / Google Chat -->
+  <rect x="32" y="92" width="210" height="118" rx="12" fill="#E8F0FE" stroke="#1A73E8" stroke-width="1.5"/>
+  <text x="137" y="126" text-anchor="middle" class="box-title">Google Chat</text>
+  <text x="137" y="148" text-anchor="middle" class="box-sub">사용자 메시지 입력</text>
+  <rect x="50" y="162" width="174" height="34" rx="6" fill="#FFFFFF" stroke="#AECBFA" stroke-width="1"/>
+  <text x="137" y="177" text-anchor="middle" class="step-sub">@봇 질문 (스페이스 공개)</text>
+  <text x="137" y="191" text-anchor="middle" class="step-sub">/private 질문 (나만 보기)</text>
+
+  <!-- Node 2: Cloud Run -->
+  <rect x="355" y="92" width="215" height="118" rx="12" fill="#E6F4EA" stroke="#188038" stroke-width="1.5"/>
+  <text x="462" y="126" text-anchor="middle" class="box-title">Cloud Run (FastAPI)</text>
+  <text x="462" y="148" text-anchor="middle" class="box-sub">중계 서버 / 어댑터</text>
+  <rect x="373" y="162" width="179" height="34" rx="6" fill="#FFFFFF" stroke="#A8DAB5" stroke-width="1"/>
+  <text x="462" y="177" text-anchor="middle" class="step-sub">OAuth 토큰 관리 (/login)</text>
+  <text x="462" y="191" text-anchor="middle" class="step-sub">백그라운드 비동기 처리</text>
+
+  <!-- Node 3: Gemini Enterprise -->
+  <rect x="680" y="92" width="208" height="118" rx="12" fill="#FEF7E0" stroke="#F9AB00" stroke-width="1.5"/>
+  <text x="784" y="126" text-anchor="middle" class="box-title">Gemini Enterprise</text>
+  <text x="784" y="148" text-anchor="middle" class="box-sub">streamAssist API</text>
+  <rect x="698" y="162" width="172" height="34" rx="6" fill="#FFFFFF" stroke="#FDD663" stroke-width="1"/>
+  <text x="784" y="177" text-anchor="middle" class="step-sub">Drive · Gmail · 사내 문서 검색</text>
+  <text x="784" y="191" text-anchor="middle" class="step-sub">멀티턴 세션 자동 관리</text>
+
+  <!-- Arrow 1: Chat -> Cloud Run -->
+  <line x1="242" y1="126" x2="348" y2="126" stroke="#1A73E8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <circle cx="295" cy="108" r="10" fill="#1A73E8"/>
+  <text x="295" y="112" text-anchor="middle" class="badge-text">1</text>
+  <text x="295" y="143" text-anchor="middle" class="step-sub">POST 웹훅</text>
+
+  <!-- Arrow 2: Cloud Run -> Chat (Immediate 200 OK) -->
+  <line x1="355" y1="176" x2="249" y2="176" stroke="#5F6368" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#arrow-gray)"/>
+  <circle cx="295" cy="161" r="10" fill="#5F6368"/>
+  <text x="295" y="165" text-anchor="middle" class="badge-text">2</text>
+  <text x="295" y="194" text-anchor="middle" class="step-sub">즉시 200 OK {}</text>
+
+  <!-- Arrow 3: Cloud Run -> Gemini Enterprise -->
+  <line x1="570" y1="126" x2="673" y2="126" stroke="#188038" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <circle cx="622" cy="108" r="10" fill="#188038"/>
+  <text x="622" y="112" text-anchor="middle" class="badge-text">3</text>
+  <text x="622" y="143" text-anchor="middle" class="step-sub">사용자 OAuth 토큰</text>
+
+  <!-- Arrow 4: Gemini Enterprise -> Cloud Run -->
+  <line x1="680" y1="176" x2="577" y2="176" stroke="#188038" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <circle cx="622" cy="161" r="10" fill="#188038"/>
+  <text x="622" y="165" text-anchor="middle" class="badge-text">4</text>
+  <text x="622" y="194" text-anchor="middle" class="step-sub">답변 + 세션 ID</text>
+
+  <!-- Arrow 5: Cloud Run -> Chat (Async Reply Loop below) -->
+  <path d="M 462 210 L 462 276 L 137 276 L 137 217" fill="none" stroke="#1A73E8" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+  <rect x="206" y="254" width="188" height="42" rx="8" fill="#FFFFFF" stroke="#1A73E8" stroke-width="1.2"/>
+  <circle cx="226" cy="275" r="10" fill="#1A73E8"/>
+  <text x="226" y="279" text-anchor="middle" class="badge-text">5</text>
+  <text x="244" y="271" class="step-text">Chat API로 최종 답장</text>
+  <text x="244" y="286" class="step-sub">공개 PATCH / 비공개 POST</text>
+
+  <!-- Bottom Explanation Cards -->
+  <rect x="32" y="326" width="272" height="114" rx="10" fill="#F8F9FA" stroke="#DADCE0" stroke-width="1"/>
+  <text x="48" y="352" class="note-title">1. 왜 Cloud Run이 필요한가?</text>
+  <text x="48" y="374" class="note-body">Apps Script는 30초가 넘으면 실행이 끊깁니다.</text>
+  <text x="48" y="393" class="note-body">Cloud Run은 먼저 200 OK를 돌려보낸 뒤</text>
+  <text x="48" y="412" class="note-body">백그라운드에서 GE 응답을 끝까지 받습니다.</text>
+
+  <rect x="324" y="326" width="272" height="114" rx="10" fill="#F8F9FA" stroke="#DADCE0" stroke-width="1"/>
+  <text x="340" y="352" class="note-title">2. 왜 OAuth 로그인이 필요한가?</text>
+  <text x="340" y="374" class="note-body">서비스 계정은 개인 Drive 접근 권한이 없습니다.</text>
+  <text x="340" y="393" class="note-body">최초 1회 로그인으로 사용자 토큰을 받아</text>
+  <text x="340" y="412" class="note-body">본인 권한에 맞는 문서만 안전하게 찾습니다.</text>
+
+  <rect x="616" y="326" width="272" height="114" rx="10" fill="#F8F9FA" stroke="#DADCE0" stroke-width="1"/>
+  <text x="632" y="352" class="note-title">3. 공개와 비공개는 어떻게 나누나?</text>
+  <text x="632" y="374" class="note-body">스페이스에서 @봇으로 부르면 전체 공개,</text>
+  <text x="632" y="393" class="note-body">/private 커맨드로 부르면 질문자 본인에게만</text>
+  <text x="632" y="412" class="note-body">보이는 비공개 메시지로 전송됩니다.</text>
+</svg>

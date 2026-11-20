@@ -1,58 +1,60 @@
-# Gemini Enterprise Google Chat Bot (Cloud Run)
+# Gemini Enterprise Google Chat App (Cloud Run)
 
-> [한국어 가이드 (README.md)](./README.md)
+[한국어 가이드](./README.md)
 
-An asynchronous **Cloud Run-based Google Chat App** that connects **Google Chat** directly to **Gemini Enterprise** (`streamAssist` API).
-
-Unlike Apps Script quickstarts that hit Google Chat's **30-second execution timeout**, this Cloud Run implementation acknowledges webhooks immediately, runs `streamAssist` asynchronously in the background, preserves **per-user ACLs** via OAuth 2.0 (for personal Google Drive / Workspace connectors), and supports both **public (`@mention`)** and **private (`/private`)** responses in the same Google Chat space.
+A Cloud Run Google Chat bot sample that connects Google Chat to Gemini Enterprise via the `streamAssist` API.
 
 ---
 
-## Key Features
+## Why This Setup?
 
-- **No 30-Second Timeout:** Immediately returns `200 OK {}` to Google Chat and runs Gemini Enterprise `streamAssist` asynchronously before posting the final answer via the Google Chat REST API.
-- **Per-User ACL Enforcement (OAuth 2.0):** Calls `streamAssist` using each user's own OAuth token (`discoveryengine.assist.readwrite`) rather than a shared service account, preserving document-level permissions across Google Drive, Gmail, and enterprise connectors.
-- **Public & Private Dual Mode:**
-  - **Public (`@Bot question`):** Posts a `"🔍 Searching..."` placeholder and updates it in-place (`PATCH`) for everyone in the space.
-  - **Private (`/private question`):** Uses Google Chat's `privateMessageViewer` field so the response is visible **only to the requesting user**.
-- **Multi-Turn GE Session Support:** Reuses the Gemini Enterprise `sessionInfo.session` returned by `streamAssist` for multi-turn context, with `/reset` to start a new session.
+Gemini Enterprise and Google Chat speak different protocols, so a lightweight bridge service is needed between them.
+
+1. **Avoiding the 30-second Apps Script timeout**
+   The official Apps Script quickstart hits Google Chat's hard 30-second execution limit whenever Drive search or multi-step reasoning takes longer than half a minute. Running the bridge on Cloud Run lets the app return `200 OK` immediately and finish the `streamAssist` call asynchronously in the background.
+2. **Preserving personal Google Drive permissions**
+   A Cloud Run service account has no access to individual users' Drive files. This app uses a one-time OAuth 2.0 login per user so Gemini Enterprise checks document permissions under the asking user's own identity.
+3. **Public and private answers in one Space**
+   Mentioning `@Bot` posts the answer for everyone in the Space. Using the `/private` slash command sends the reply with `privateMessageViewer` so only the asking user can see it.
 
 ---
 
 ## Architecture
 
-```mermaid
-sequenceDiagram
-    participant U as Google Chat User
-    participant C as Google Chat API
-    participant R as Cloud Run (FastAPI)
-    participant GE as Gemini Enterprise (streamAssist)
+![Gemini Enterprise Google Chat Architecture](./docs/architecture-en.svg)
 
-    U->>C: @Bot question (Public) or /private question (Private)
-    C->>R: POST / (Webhook Event)
-    R-->>C: 200 OK {} (Immediate ACK, avoids 30s timeout)
-    alt First-time user (no token)
-        R->>C: Send one-time OAuth login link (/login -> /callback)
-    else Authenticated user
-        R->>C: (Public mode) Post "🔍 Searching..."
-        R->>GE: POST :streamAssist (User OAuth Bearer Token)
-        GE-->>R: Grounded Answer + sessionInfo.session
-        R->>C: PATCH (Public in-place update) or POST privateMessageViewer (Private)
-    end
+---
+
+## Repository Structure
+
+All files required for Cloud Run deployment live inside `app/`. Download or clone the repo and deploy straight from that folder.
+
+```text
+ge-google-chat-app/
+├── README.md                 # Korean setup guide
+├── README.en.md              # English setup guide
+├── docs/
+│   ├── architecture-ko.svg   # Architecture diagram (Korean)
+│   └── architecture-en.svg   # Architecture diagram (English)
+└── app/                      # Deployable Cloud Run source files
+    ├── main.py               # FastAPI webhook server
+    ├── requirements.txt      # Python dependencies
+    ├── Procfile              # Cloud Run entrypoint
+    └── .env.example          # Environment variable template
 ```
 
 ---
 
 ## Prerequisites
 
-1. A **Google Cloud project** with billing enabled.
-2. A **Google Workspace** domain with Google Chat enabled.
-3. A configured **Gemini Enterprise App** using Google Identity (with Google Drive or other Data Stores connected).
-4. `gcloud` CLI installed (or **Cloud Shell** in Google Cloud Console).
+1. A Google Cloud project with billing enabled
+2. A Google Workspace account with Google Chat access
+3. A Gemini Enterprise app configured with Google Identity and connected data stores
+4. `gcloud` CLI installed locally or Google Cloud Shell
 
 ---
 
-## Step-by-Step Setup Guide
+## Step-by-Step Setup
 
 ### Step 1. Enable Required APIs
 
@@ -67,24 +69,26 @@ gcloud services enable \
   discoveryengine.googleapis.com
 ```
 
-### Step 2. Configure OAuth Consent Screen & Web Client
+### Step 2. Configure OAuth Consent and Client
 
-1. In Google Cloud Console, go to **Google Auth Platform > Branding**, configure app name & support email, and set **Audience** to **Internal**.
-2. Go to **Google Auth Platform > Data Access > Add or remove scopes** and add:
+1. Open **Google Auth Platform > Branding** in Google Cloud Console, set your app name and support email, and choose **Internal** for Audience.
+2. Open **Google Auth Platform > Data Access > Add or remove scopes** and add:
    ```text
    https://www.googleapis.com/auth/discoveryengine.assist.readwrite
    ```
-3. Go to **Google Auth Platform > Clients > `+ Create client`**:
-   - **Application type:** `Web application`
+3. Open **Google Auth Platform > Clients > + Create client**:
+   - **Application type:** Web application
    - **Name:** `ge-chat-bot-oauth`
-   - **Authorized redirect URIs:** Add `https://<CLOUD_RUN_URL>/callback` right after Step 3.
-4. Save the generated **Client ID** and **Client Secret**.
+   - **Authorized redirect URIs:** Leave blank for now and add it right after Step 3.
+4. Copy the generated **Client ID** and **Client Secret**.
 
-### Step 3. Deploy to Cloud Run (Single Command, No Git Required)
+### Step 3. Deploy to Cloud Run
 
-Run the following command from this repository directory (replace `<...>` placeholders):
+Move into the `app/` directory and deploy with a single command. Replace the `<...>` placeholders with your own values.
 
 ```bash
+cd app
+
 gcloud run deploy ge-chat-bot \
   --source . \
   --region asia-northeast3 \
@@ -94,57 +98,58 @@ gcloud run deploy ge-chat-bot \
   --set-env-vars "GE_PROJECT=${PROJECT_ID},GE_LOCATION=global,GE_APP_ID=<GE_APP_ID>,SERVICE_URL=https://placeholder.run.app,OAUTH_CLIENT_ID=<OAUTH_CLIENT_ID>,OAUTH_CLIENT_SECRET=<OAUTH_CLIENT_SECRET>"
 ```
 
-Copy the resulting **`Service URL`** (e.g., `https://ge-chat-bot-xxxxxxxxxx-du.a.run.app`), then:
+Copy the **Service URL** printed after deployment, then finish two quick updates:
 
-1. **Register Redirect URI:** In your OAuth client from Step 2, add `https://<SERVICE_URL>/callback` under **Authorized redirect URIs** and save.
-2. **Update `SERVICE_URL` on Cloud Run:**
+1. Return to your OAuth client from Step 2 and add `https://<SERVICE_URL>/callback` under **Authorized redirect URIs**.
+2. Update `SERVICE_URL` on Cloud Run:
    ```bash
    gcloud run services update ge-chat-bot \
      --region asia-northeast3 \
      --update-env-vars "SERVICE_URL=https://<SERVICE_URL>"
    ```
 
-> **Why `--no-cpu-throttling` and `--max-instances=1`?**
-> - `--no-cpu-throttling`: Keeps CPU allocated after the immediate `{}` response so the background `streamAssist` request completes reliably.
-> - `--max-instances=1`: This sample stores OAuth tokens and session IDs in memory (`USER_TOKENS`, `CHAT_SESSIONS`) for simplicity. For production multi-instance scaling, persist them in **Firestore**.
+> **Note:** `--no-cpu-throttling` keeps the background task alive after the immediate `200 OK` response. `--max-instances=1` is used because this sample keeps tokens and session IDs in memory; swap them to Firestore before scaling out in production.
 
 ### Step 4. Configure Google Chat API
 
-1. In Google Cloud Console, go to **APIs & Services > Google Chat API > Configuration**.
-2. Configure:
+1. Open **APIs & Services > Google Chat API > Configuration** in Google Cloud Console.
+2. Fill in the settings:
    - **App name:** `Gemini Enterprise Chat`
    - **Avatar URL:** Any public icon URL
-   - **Description:** `Gemini Enterprise Assistant for Google Chat`
-   - **Interactive features:** Turn **ON**
+   - **Description:** `Gemini Enterprise assistant for Google Chat`
+   - **Interactive features:** Enabled
    - **Functionality:** Check **Join spaces and group conversations**
-   - **Connection settings:** Select **HTTP endpoint URL** and paste your Cloud Run **`Service URL`**
-   - **Slash commands (for private mode):** Click `+ Add slash command`
+   - **Connection settings:** Choose **HTTP endpoint URL** and paste your Cloud Run **Service URL**
+   - **Slash commands:** Click `+ Add slash command`
      - **Name:** `/private`
      - **Command ID:** `1`
-     - **Description:** `Ask Gemini Enterprise privately (visible only to you)`
-   - **Visibility:** Add test users/groups (or publish internally via Google Workspace Marketplace SDK for org-wide access)
+     - **Description:** `Ask Gemini Enterprise privately`
+   - **Visibility:** Add test user emails or a Google Group
 3. Click **Save**.
 
 ---
 
 ## Usage
 
-1. Refresh Google Chat. Start a **1:1 DM** with `Gemini Enterprise Chat`, or add it to a Space via **Space Name > Apps & integrations > Add apps**.
-2. On your first message, the bot replies with a one-time **OAuth login link**. Click it and grant access.
-3. Interact in either mode:
-   - **Public (Space):** `@Gemini Enterprise Chat Find our project guidelines in Drive`
-   - **Private (Space):** `/private Summarize my latest Drive docs`
-   - **Reset session:** `/reset`
+1. Refresh Google Chat. Start a 1:1 DM with `Gemini Enterprise Chat`, or invite it to a Space via **Space name > Apps & integrations > Add apps**.
+   - Google Chat does not allow bots in regular group DMs; use a Space instead.
+2. Send your first message and click the one-time OAuth login link returned by the bot.
+3. Use either mode:
+   - **Public in a Space:** `@Gemini Enterprise Chat Find our onboarding guide in Drive`
+   - **Private in a Space:** `/private Summarize my latest Drive documents`
+   - **Start a fresh session:** `/reset`
 
-> **Security Note:** Using public `@mention` mode with per-user OAuth will post summaries of documents accessible to the requester into the shared space. Recommend **1:1 DM** or **`/private`** for personal or confidential Drive queries.
+> **Security note:** Asking about personal Drive documents via `@mention` posts the summary to the entire Space. Use 1:1 DMs or `/private` for personal files.
 
 ---
 
-## Production Considerations & FAQ
+## FAQ
 
-- **Q. Do I need a database to keep multi-turn chat sessions?**
-  - Conversation history itself is managed inside **Gemini Enterprise Sessions** (`sessionInfo.session`). You only need a lightweight key-value mapping (`(space, user) -> session_id`) plus user OAuth tokens. For production multi-instance Cloud Run deployments, store these two small collections in **Cloud Firestore** (no relational DB required).
-- **Q. Can I host multiple Chat bots in one GCP project?**
-  - Google Chat API enforces a **1:1 mapping between GCP projects and Chat apps**. To expose multiple agents, route them via slash commands inside one bot, or use lightweight shell projects pointing to routes on the same Cloud Run backend.
-- **Q. How should I secure the Cloud Run endpoint in production?**
-  - Verify the Google Chat `Authorization: Bearer <JWT>` token signature and audience (`aud`) inside `handle_chat_event` using `google.oauth2.id_token.verify_oauth2_token`.
+### Do I need a database to keep multi-turn chat sessions?
+Gemini Enterprise stores the conversation history inside its own session resource. Your app only maps `(space, user)` to a GE session ID alongside user OAuth tokens, so two small Cloud Firestore collections are enough for production.
+
+### Can I run multiple Chat bots in a single GCP project?
+Google Chat API enforces one Chat app per GCP project. To offer multiple agents, route them with slash commands inside one bot or point lightweight shell projects to routes on the same Cloud Run service.
+
+### What should I harden before production rollout?
+Verify the Google Chat `Authorization: Bearer` JWT inside `handle_chat_event` using `google.oauth2.id_token.verify_oauth2_token`, and replace the in-memory dictionaries with Firestore.
