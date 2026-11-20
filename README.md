@@ -154,7 +154,7 @@ gcloud run deploy ge-chat-bot \
 
 ---
 
-## 자주 묻는 질문
+## Questions
 
 ### 대화 맥락을 유지하려면 DB를 따로 구축해야 하나요?
 대화 내용 자체는 Gemini Enterprise 내부 세션이 기억합니다. 앱은 채팅방과 GE 세션 ID의 매핑 한 줄과 사용자 OAuth 토큰만 들고 있으면 되므로 별도 RDB 없이 Cloud Firestore 컬렉션 두 개만 붙이면 운영 환경에서도 깔끔하게 동작합니다.
