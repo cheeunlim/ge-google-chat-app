@@ -69,6 +69,7 @@ gcloud config set project "$PROJECT_ID"
 gcloud services enable \
   run.googleapis.com \
   cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
   chat.googleapis.com \
   discoveryengine.googleapis.com
 ```
@@ -91,6 +92,8 @@ gcloud services enable \
 
 ### 3단계. Cloud Run 배포
 
+먼저 Google Cloud Console의 **Gemini Enterprise > Apps**에서 연결할 앱의 **ID**(`GE_APP_ID`)와 **위치**(`global`, `us`, `eu` 중 하나)를 확인해 둡니다.
+
 이 리포지토리를 내려받은 뒤 `app/` 폴더로 들어가서 아래 명령을 실행합니다. `<...>` 부분은 본인 환경 값으로 바꿔 주세요.
 
 ```bash
@@ -105,14 +108,14 @@ gcloud run deploy ge-chat-bot \
   --set-env-vars "GE_PROJECT=${PROJECT_ID},GE_LOCATION=global,GE_APP_ID=<GE_APP_ID>,SERVICE_URL=https://placeholder.run.app,OAUTH_CLIENT_ID=<OAUTH_CLIENT_ID>,OAUTH_CLIENT_SECRET=<OAUTH_CLIENT_SECRET>"
 ```
 
-배포가 끝나면 터미널에 출력되는 **Service URL**을 복사한 뒤 두 가지를 마무리합니다.
+배포가 끝나면 터미널에 출력되는 **Service URL**(`https://ge-chat-bot-xxxx.a.run.app` 형태)을 복사한 뒤 두 가지를 마무리합니다.
 
-1. 2단계에서 만든 OAuth 클라이언트 설정으로 돌아가 **Authorized redirect URIs**에 `https://<SERVICE_URL>/callback`을 추가하고 저장합니다.
+1. 2단계에서 만든 OAuth 클라이언트 설정으로 돌아가 **Authorized redirect URIs**에 `<SERVICE_URL>/callback`을 추가하고 저장합니다.
 2. Cloud Run의 `SERVICE_URL` 환경변수를 실제 주소로 바꿉니다.
    ```bash
    gcloud run services update ge-chat-bot \
      --region asia-northeast3 \
-     --update-env-vars "SERVICE_URL=https://<SERVICE_URL>"
+     --update-env-vars "SERVICE_URL=<SERVICE_URL>"
    ```
 
 > **참고:** `--no-cpu-throttling`은 Google Chat에 먼저 응답을 보낸 뒤에도 백그라운드 작업이 멈추지 않게 하기 위한 옵션입니다. `--max-instances=1`은 이 샘플이 테스트 편의를 위해 토큰과 세션을 메모리에 저장하기 때문에 붙였습니다. 실제 운영 환경에서는 Firestore로 저장소를 바꾸고 인스턴스 제한을 푸는 것을 권장합니다.
@@ -132,6 +135,7 @@ gcloud run deploy ge-chat-bot \
      - **Command ID:** `1`
      - **Description:** `나만 보이는 비공개 질문`
    - **Visibility:** 함께 테스트할 사람이나 Google Group 이메일 추가
+   - **App status:** `Live - available to users` 선택
 3. **Save**를 누릅니다.
 
 ---

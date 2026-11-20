@@ -65,6 +65,7 @@ gcloud config set project "$PROJECT_ID"
 gcloud services enable \
   run.googleapis.com \
   cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
   chat.googleapis.com \
   discoveryengine.googleapis.com
 ```
@@ -84,6 +85,8 @@ gcloud services enable \
 
 ### Step 3. Deploy to Cloud Run
 
+First, open **Gemini Enterprise > Apps** in Google Cloud Console and note your app's **ID** (`GE_APP_ID`) and **Location** (`global`, `us`, or `eu`).
+
 Move into the `app/` directory and deploy with a single command. Replace the `<...>` placeholders with your own values.
 
 ```bash
@@ -98,14 +101,14 @@ gcloud run deploy ge-chat-bot \
   --set-env-vars "GE_PROJECT=${PROJECT_ID},GE_LOCATION=global,GE_APP_ID=<GE_APP_ID>,SERVICE_URL=https://placeholder.run.app,OAUTH_CLIENT_ID=<OAUTH_CLIENT_ID>,OAUTH_CLIENT_SECRET=<OAUTH_CLIENT_SECRET>"
 ```
 
-Copy the **Service URL** printed after deployment, then finish two quick updates:
+Copy the **Service URL** printed after deployment (for example, `https://ge-chat-bot-xxxx.a.run.app`), then finish two quick updates:
 
-1. Return to your OAuth client from Step 2 and add `https://<SERVICE_URL>/callback` under **Authorized redirect URIs**.
+1. Return to your OAuth client from Step 2 and add `<SERVICE_URL>/callback` under **Authorized redirect URIs**.
 2. Update `SERVICE_URL` on Cloud Run:
    ```bash
    gcloud run services update ge-chat-bot \
      --region asia-northeast3 \
-     --update-env-vars "SERVICE_URL=https://<SERVICE_URL>"
+     --update-env-vars "SERVICE_URL=<SERVICE_URL>"
    ```
 
 > **Note:** `--no-cpu-throttling` keeps the background task alive after the immediate `200 OK` response. `--max-instances=1` is used because this sample keeps tokens and session IDs in memory; swap them to Firestore before scaling out in production.
@@ -125,6 +128,7 @@ Copy the **Service URL** printed after deployment, then finish two quick updates
      - **Command ID:** `1`
      - **Description:** `Ask Gemini Enterprise privately`
    - **Visibility:** Add test user emails or a Google Group
+   - **App status:** Select `Live - available to users`
 3. Click **Save**.
 
 ---
